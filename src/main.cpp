@@ -7,7 +7,7 @@
 #include "./modules/DriveController/DriveController.h"
 #include "./modules/SteeringController/SteeringController.h"
 #include "./modules/SystemStatus/SystemStatus.h"
-#include "./Shared/CarState.h" // CORRECTED: Path from main.cpp to sibling folder Shared
+#include "./Shared/CarState.h"
 
 //================================================================================
 // --- PIN DEFINITIONS ---
@@ -40,6 +40,10 @@ const long ACCEL_INTERVAL_HIGH = 25;  // 25ms: Eases into the final top speed (8
 // Active Braking
 const long BRAKING_INTERVAL = 5;      // 5ms: Very fast deceleration for single-pedal feel
 
+// RC Receiver Calibration
+const int REMOTE_NEUTRAL_MIN = 1480;  // Start of the dead zone
+const int REMOTE_NEUTRAL_MAX = 1520;  // End of the dead zone
+
 const int MOTOR_PWM_CHANNEL = 0;        // ESP32 LEDC PWM channel (0-15) for the drive motor
 const int MIN_SAFETY_DISTANCE_CM = 20;  // Safety distance at 0 speed
 const int MAX_SAFETY_DISTANCE_CM = 80;  // Safety distance at max speed
@@ -63,7 +67,7 @@ Logger steeringLogger("Steering");
 Accelerator accelerator(PEDAL_PIN, &accelLogger, ACCEL_INTERVAL_LOW, ACCEL_INTERVAL_MID, ACCEL_INTERVAL_HIGH, BRAKING_INTERVAL); 
 ProximitySensor frontSensor(FRONT_TRIG_PIN, FRONT_ECHO_PIN, &frontSensorLogger);
 ProximitySensor backSensor(BACK_TRIG_PIN, BACK_ECHO_PIN, &backSensorLogger);
-RCReceiver remoteControl(REMOTE_THROTTLE_PIN, REMOTE_STEERING_PIN, &remoteLogger);
+RCReceiver remoteControl(REMOTE_THROTTLE_PIN, REMOTE_STEERING_PIN, &remoteLogger, REMOTE_NEUTRAL_MIN, REMOTE_NEUTRAL_MAX);
 GearShifter shifter(SHIFTER_PIN, &shifterLogger);
 DriveController driveController(MOTOR_DIR_PIN, MOTOR_PWM_PIN, MOTOR_PWM_CHANNEL, &driveLogger);
 SteeringController steeringController(STEERING_SERVO_PIN, &steeringLogger);
