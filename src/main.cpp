@@ -57,6 +57,7 @@ const int REMOTE_STEERING_NEUTRAL_MAX = 1520; // End of Steering dead zone
 const int MIN_SAFETY_DISTANCE_CM = 20;  // Safety distance at 0 speed
 const int MAX_SAFETY_DISTANCE_CM = 80;  // Safety distance at max speed
 const int SENSOR_LOGGING_THRESHOLD = MAX_SAFETY_DISTANCE_CM + 20; // Log if object is within 100cm
+const int SENSOR_SMOOTHING_WINDOW = 5; // Average the last 5 readings
 
 // Drive Motor
 const int MOTOR_PWM_CHANNEL = 0;        // ESP32 LEDC PWM channel (0-15) for the drive motor
@@ -79,8 +80,8 @@ Logger soundLogger("Sound Controller");
 
 // Components (instantiate all our hardware modules with their pins and loggers)
 Accelerator accelerator(PEDAL_PIN, &accelLogger, ACCEL_INTERVAL_LOW, ACCEL_INTERVAL_MID, ACCEL_INTERVAL_HIGH, BRAKING_INTERVAL, ACCEL_LOGGING_THRESHOLD);
-ProximitySensor frontSensor(FRONT_TRIG_PIN, FRONT_ECHO_PIN, &frontSensorLogger, SENSOR_LOGGING_THRESHOLD);
-ProximitySensor backSensor(BACK_TRIG_PIN, BACK_ECHO_PIN, &backSensorLogger, SENSOR_LOGGING_THRESHOLD);
+ProximitySensor frontSensor(FRONT_TRIG_PIN, FRONT_ECHO_PIN, &frontSensorLogger, SENSOR_LOGGING_THRESHOLD, SENSOR_SMOOTHING_WINDOW);
+ProximitySensor backSensor(BACK_TRIG_PIN, BACK_ECHO_PIN, &backSensorLogger, SENSOR_LOGGING_THRESHOLD, SENSOR_SMOOTHING_WINDOW);
 RCReceiver remoteControl(REMOTE_THROTTLE_PIN, REMOTE_STEERING_PIN, &remoteLogger, REMOTE_THROTTLE_NEUTRAL_MIN, REMOTE_THROTTLE_NEUTRAL_MAX, REMOTE_STEERING_NEUTRAL_MIN, REMOTE_STEERING_NEUTRAL_MAX);
 GearShifter shifter(SHIFTER_PIN, &shifterLogger);
 DriveController driveController(MOTOR_DIR_PIN, MOTOR_PWM_PIN, MOTOR_PWM_CHANNEL, &driveLogger);
@@ -109,7 +110,7 @@ void setup() {
   steeringController.setup();
   soundController.setup();
   
-  Serial.println("\n--- Single-Pedal Driving Initialized ---");
+  Serial.println("\n--- Ride-On Car Final Version Initialized ---");
 }
 
 //================================================================================
@@ -124,12 +125,11 @@ void loop() {
   accelerator.update();
   remoteControl.update();
   shifter.update();
-  frontSensor.update(); // CRITICAL: Tell the non-blocking sensor to trigger a new ping
-  backSensor.update();  // CRITICAL: Tell the non-blocking sensor to trigger a new ping
+  frontSensor.update();
+  backSensor.update();
   long frontDistance = frontSensor.getDistanceCm();
   long backDistance = backSensor.getDistanceCm();
   int currentCarSpeed = accelerator.getCurrentSpeed();
-  int engineLoad = accelerator.getEngineLoad();
   Gear currentGear = shifter.getGear();
 
   //----------------------------------------------------------------
@@ -224,8 +224,7 @@ void loop() {
   steeringController.setSteering(finalSteering);
   systemStatus.update(currentState);
 
-  // Update the sound controller with both speed and load data
-  soundController.setEngineState(currentCarSpeed, engineLoad);
-  // Keep the sound buffer full
+  // The sound controller now reacts to the final motor command.
+  soundController.setMotorCommand(finalMotorSpeed);
   soundController.update();
 }

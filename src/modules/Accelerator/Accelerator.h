@@ -6,7 +6,7 @@
  * @brief Manages single-pedal driving with intelligent logging.
  *
  * This class reads an analog pedal input, applies a sophisticated smoothing
- * algorithm, and provides data on speed and engine load. It only logs its
+ * algorithm, and provides data on speed. It only logs its
  * output when the pedal is actively being used (outside of a dead zone).
  */
 class Accelerator {
@@ -28,7 +28,7 @@ public:
   int getMotorOutput();
   void overrideSpeed(int speed);
   int getCurrentSpeed();
-  int getEngineLoad();
+  // The getEngineLoad() function has been removed as it is no longer needed.
 
 private:
   // Pin and Logger
@@ -54,5 +54,5 @@ private:
 
   // Intelligent logging variables
   const int _loggingThreshold;
-  bool _wasLogging = false; // Tracks if we were logging on the previous loop
+  bool _wasLogging = false;
 };

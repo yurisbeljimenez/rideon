@@ -10,10 +10,10 @@
 // --- Engine Sound Tuning ---
 #define IDLE_FREQ 80.0f
 #define MAX_FREQ 600.0f
-#define RPM_SMOOTHING 0.01f
-#define LFO_FREQ 30.0f       // The "wobble" speed of the engine sound
-#define MIN_MOD_DEPTH 1.0f   // How much wobble at idle (a little bit)
-#define MAX_MOD_DEPTH 15.0f  // How much wobble under heavy load (aggressive)
+#define SPEED_SMOOTHING 0.01f // How quickly the sound pitch changes
+#define LFO_FREQ 30.0f
+#define MIN_MOD_DEPTH 1.0f
+#define MAX_MOD_DEPTH 15.0f
 
 int16_t i2s_buffer[BUFFER_SIZE];
 
@@ -53,30 +53,33 @@ void SoundController::update() {
   fillBuffer();
 }
 
-// Sets the target RPM and Load for the engine sound.
-void SoundController::setEngineState(int rpm, int load) {
-  _targetRpm = constrain(rpm, 0, 100);
-  _targetLoad = constrain(load, 0, 100);
+// Sets the target motor speed from the main loop.
+void SoundController::setMotorCommand(int speed) {
+  _targetSpeed = constrain(speed, -255, 255);
 }
 
 void SoundController::fillBuffer() {
-  _currentRpm = _currentRpm + (_targetRpm - _currentRpm) * RPM_SMOOTHING;
+  // Smoothly move the sound's current speed towards the target speed.
+  _currentSpeed = _currentSpeed + (_targetSpeed - _currentSpeed) * SPEED_SMOOTHING;
   
-  float base_freq = map(_currentRpm, 0, 100, IDLE_FREQ, MAX_FREQ);
+  // The "RPM" is based on the absolute value of the smoothed speed.
+  float rpm = abs(_currentSpeed);
+  float base_freq = map(rpm, 0, 255, IDLE_FREQ, MAX_FREQ);
   
-  // --- Load-based Timbre Logic ---
-  // Map the engine load to a modulation depth. More load = more wobble.
-  float mod_depth = map(_targetLoad, 0, 100, MIN_MOD_DEPTH, MAX_MOD_DEPTH);
+  // The "Engine Load" is calculated by how quickly the speed is increasing.
+  float load = (_currentSpeed - _previousSpeed);
+  if (load < 0) load = 0; // Only apply load effect on acceleration
+  _previousSpeed = _currentSpeed;
+  
+  // Map the load to the aggressiveness of the sound.
+  float mod_depth = map(load, 0, 5, MIN_MOD_DEPTH, MAX_MOD_DEPTH); // A small change in speed creates a big change in sound
+  mod_depth = constrain(mod_depth, MIN_MOD_DEPTH, MAX_MOD_DEPTH);
 
   float lfo_phase_step = (LFO_FREQ * 2 * PI) / SAMPLE_RATE;
 
   for (int i = 0; i < BUFFER_SIZE; i++) {
-    // Calculate the frequency offset from our "wobble" wave (LFO)
     float freq_offset = sin(_lfoPhase) * mod_depth;
-    
-    // The final frequency is the base pitch plus the aggressive wobble
     float final_freq = base_freq + freq_offset;
-    
     float phase_step = (final_freq * 2 * PI) / SAMPLE_RATE;
 
     int16_t sample = 5000 * sin(_phase);

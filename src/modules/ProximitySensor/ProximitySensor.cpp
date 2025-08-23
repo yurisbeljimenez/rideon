@@ -1,32 +1,40 @@
 #include "ProximitySensor.h"
 #include <Arduino.h>
 
-// Initialize static members of the class
-volatile unsigned long ProximitySensor::_echoStartTime = 0;
-volatile unsigned long ProximitySensor::_echoEndTime = 0;
-volatile bool ProximitySensor::_newDistanceAvailable = false;
-ProximitySensor* ProximitySensor::_instance = nullptr;
-
-// The constructor now accepts and saves the logging threshold.
-ProximitySensor::ProximitySensor(int trigPin, int echoPin, Logger* logger, int loggingThreshold) :
-  _loggingThreshold(loggingThreshold)
+// The constructor now also creates the dynamic array for the smoothing filter.
+ProximitySensor::ProximitySensor(int trigPin, int echoPin, Logger* logger, int loggingThreshold, int windowSize) :
+  _loggingThreshold(loggingThreshold),
+  _windowSize(windowSize)
 {
   _trigPin = trigPin;
   _echoPin = echoPin;
   _logger = logger;
-  _instance = this;
+  _readings = new long[_windowSize];
 }
 
 void ProximitySensor::setup() {
   pinMode(_trigPin, OUTPUT);
   pinMode(_echoPin, INPUT);
-  attachInterrupt(digitalPinToInterrupt(_echoPin), echo_isr, CHANGE);
+
+  // Initialize the smoothing filter array.
+  for (int i = 0; i < _windowSize; i++) {
+    _readings[i] = 0;
+  }
+
+  // --- Correct Multi-Instance Interrupt Setup ---
+  // We attach the interrupt and pass 'this' (a pointer to the current object)
+  // as an argument. This allows our static handler to know which sensor instance
+  // triggered the interrupt, fixing the bug.
+  attachInterruptArg(digitalPinToInterrupt(_echoPin), isr_handler, this, CHANGE);
+
   if (_logger) {
-    _logger->log("Initialized (Non-Blocking)");
+    _logger->log("Initialized (Unified)");
   }
 }
 
+// The update function now handles both pinging and smoothing.
 void ProximitySensor::update() {
+  // 1. Periodically trigger a new sensor ping.
   unsigned long currentTime = millis();
   if (currentTime - _lastPingTime >= _pingInterval) {
     _lastPingTime = currentTime;
@@ -35,34 +43,50 @@ void ProximitySensor::update() {
     digitalWrite(_trigPin, HIGH);
     delayMicroseconds(10);
     digitalWrite(_trigPin, LOW);
-    _newDistanceAvailable = false;
   }
 
+  // 2. If the ISR has captured a new raw reading, process it.
   if (_newDistanceAvailable) {
     long duration = _echoEndTime - _echoStartTime;
-    _distanceCm = duration * 0.0343 / 2;
-    _newDistanceAvailable = false;
-    
+    long rawDistance = 0;
+    if (duration > 0) {
+      rawDistance = duration * 0.0343 / 2;
+    }
+    _newDistanceAvailable = false; // Reset the flag
+
+    // --- Moving Average Filter Logic ---
+    _total = _total - _readings[_readIndex];
+    _readings[_readIndex] = rawDistance;
+    _total = _total + _readings[_readIndex];
+    _readIndex = (_readIndex + 1) % _windowSize; // Wrap index
+    _smoothedDistanceCm = _total / _windowSize;
+
     // --- Intelligent Logging Logic ---
-    // Only log the distance if it's a valid reading AND it's within our warning zone.
-    if (_logger && _distanceCm > 0 && _distanceCm < _loggingThreshold) {
-      _logger->log(_distanceCm);
+    if (_logger && _smoothedDistanceCm > 0 && _smoothedDistanceCm < _loggingThreshold) {
+      _logger->log(_smoothedDistanceCm);
     }
   }
 }
 
+// This function now instantly returns the last known SMOOTHED distance.
 long ProximitySensor::getDistanceCm() {
-  return _distanceCm;
+  return _smoothedDistanceCm;
 }
 
-void IRAM_ATTR ProximitySensor::echo_isr() {
-  if (_instance) {
-    if (digitalRead(_instance->_echoPin) == HIGH) {
-      _echoStartTime = micros();
-    } 
-    else {
-      _echoEndTime = micros();
-      _newDistanceAvailable = true;
-    }
+// This is the static C-style function that the hardware interrupt calls.
+// It acts as a bridge to our class-specific method.
+void IRAM_ATTR ProximitySensor::isr_handler(void* arg) {
+  // Cast the argument back to a ProximitySensor object pointer and call its handler.
+  ProximitySensor* instance = static_cast<ProximitySensor*>(arg);
+  instance->handleInterrupt();
+}
+
+// This is the instance-specific interrupt handler.
+void IRAM_ATTR ProximitySensor::handleInterrupt() {
+  if (digitalRead(_echoPin) == HIGH) {
+    _echoStartTime = micros();
+  } else {
+    _echoEndTime = micros();
+    _newDistanceAvailable = true;
   }
 }

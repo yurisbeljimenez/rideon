@@ -3,11 +3,11 @@
 
 /**
  * @class SoundController
- * @brief Generates a dynamic, load-based engine sound.
+ * @brief Generates a dynamic engine sound based on the final motor command.
  *
- * This module uses I2S and DMA to generate a non-blocking sine wave. The pitch
- * is controlled by the RPM, and the timbre (aggressiveness) is controlled by
- * the engine load, which modulates the frequency for a more realistic sound.
+ * This module takes the final motor speed (-255 to 255) and calculates both
+ * the RPM (pitch) and engine load (timbre/aggressiveness) internally. It uses
+ * I2S and DMA for non-blocking, real-time audio synthesis.
  */
 class SoundController {
 public:
@@ -16,11 +16,10 @@ public:
   void update();
 
   /**
-   * @brief Sets the target engine state (RPM and Load).
-   * @param rpm The current speed of the car (0-100).
-   * @param load The current load on the engine (0-100).
+   * @brief Sets the target motor command, which drives the entire sound simulation.
+   * @param speed The final motor speed command (-255 to 255).
    */
-  void setEngineState(int rpm, int load);
+  void setMotorCommand(int speed);
 
 private:
   int _bclkPin;
@@ -29,11 +28,12 @@ private:
   Logger* _logger;
 
   // Sound generation variables
-  int _targetRpm = 0;
-  int _targetLoad = 0;
-  int _currentRpm = 0;
+  int _targetSpeed = 0;
+  float _currentSpeed = 0; // Use float for smoother transitions
+  float _previousSpeed = 0;
+  
   float _phase = 0.0;
-  float _lfoPhase = 0.0; // Phase for the "wobble" wave (LFO)
+  float _lfoPhase = 0.0;
 
   void fillBuffer();
 };

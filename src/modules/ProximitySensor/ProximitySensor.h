@@ -3,10 +3,12 @@
 
 /**
  * @class ProximitySensor
- * @brief Manages an HC-SR04 sensor with intelligent, non-blocking operation.
+ * @brief A unified, non-blocking, and smoothed ultrasonic sensor module.
  *
- * This version uses hardware interrupts for non-blocking reads and only logs
- * distance readings when an object enters a specified "warning zone" threshold.
+ * This class manages an HC-SR04 sensor from start to finish. It uses hardware
+ * interrupts for fully non-blocking distance reads, correctly handles multiple
+ * sensor instances, applies an internal moving average filter to smooth out noisy
+ * readings, and only logs data when an object enters a specified "warning zone".
  */
 class ProximitySensor {
 public:
@@ -16,27 +18,41 @@ public:
    * @param echoPin The GPIO pin for the sensor's Echo pin.
    * @param logger A pointer to a Logger object for debugging.
    * @param loggingThreshold The distance in cm below which readings will be logged.
+   * @param windowSize The number of readings to include in the moving average filter.
    */
-  ProximitySensor(int trigPin, int echoPin, Logger* logger, int loggingThreshold);
+  ProximitySensor(int trigPin, int echoPin, Logger* logger, int loggingThreshold, int windowSize);
 
   void setup();
-  void update();
-  long getDistanceCm();
+  void update(); // Triggers pings and updates the smoothed average.
+  long getDistanceCm(); // Instantly returns the last known smoothed distance.
 
 private:
+  // Pins, Logger, and Tuning
   int _trigPin;
   int _echoPin;
   Logger* _logger;
-  const int _loggingThreshold; 
+  const int _loggingThreshold;
 
+  // Timing for non-blocking pings
   unsigned long _lastPingTime = 0;
   const int _pingInterval = 60;
 
-  static volatile unsigned long _echoStartTime;
-  static volatile unsigned long _echoEndTime;
-  static volatile bool _newDistanceAvailable;
-  volatile long _distanceCm = 0;
+  // Variables for the moving average filter
+  const int _windowSize;
+  long* _readings;
+  int _readIndex = 0;
+  long _total = 0;
+  volatile long _smoothedDistanceCm = 0;
 
-  static ProximitySensor* _instance;
-  static void IRAM_ATTR echo_isr();
+  // --- Interrupt Service Routine (ISR) Variables ---
+  // These are specific to each instance of the class.
+  volatile unsigned long _echoStartTime = 0;
+  volatile unsigned long _echoEndTime = 0;
+  volatile bool _newDistanceAvailable = false;
+  
+  // The ISR function that will be called by the hardware.
+  void IRAM_ATTR handleInterrupt();
+
+  // A static helper that allows the C-style ISR to call our class method.
+  static void IRAM_ATTR isr_handler(void* arg);
 };

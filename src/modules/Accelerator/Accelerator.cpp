@@ -22,7 +22,7 @@ void Accelerator::setup() {
   }
 }
 
-// The update() method now contains the intelligent logging logic.
+// update() is unchanged
 void Accelerator::update() {
   int pedalValue = analogRead(_pedalPin);
   _desiredSpeed = map(pedalValue, 0, 4095, 0, 100);
@@ -54,7 +54,6 @@ void Accelerator::update() {
   if (_logger) {
     int motorOutput = getMotorOutput();
     bool shouldLog = (motorOutput > _loggingThreshold);
-    // Log if we are in the active zone OR if we just left it (to log the final 0).
     if (shouldLog || _wasLogging) {
       _logger->log(motorOutput);
     }
@@ -62,10 +61,7 @@ void Accelerator::update() {
   }
 }
 
-int Accelerator::getEngineLoad() {
-  int load = _desiredSpeed - _currentSpeed;
-  return (load > 0) ? load : 0;
-}
+// The getEngineLoad() function has been removed as it is no longer needed.
 
 void Accelerator::overrideSpeed(int speed) {
   _desiredSpeed = constrain(speed, 0, 100);
