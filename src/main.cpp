@@ -7,6 +7,7 @@
 #include "./modules/DriveController/DriveController.h"
 #include "./modules/SteeringController/SteeringController.h"
 #include "./modules/SystemStatus/SystemStatus.h"
+#include "./modules/SoundController/SoundController.h"
 #include "./Shared/CarState.h"
 
 //================================================================================
@@ -28,6 +29,10 @@
 #define MOTOR_DIR_PIN 1         // Digital pin to Cytron MDDS30 DIR1/DIR2
 #define MOTOR_PWM_PIN 2         // Digital pin to Cytron MDDS30 PWM1/PWM2
 #define STEERING_SERVO_PIN 17   // Digital pin to Radiolink CL9030 Steering ESC Signal
+// I2S Sound
+#define I2S_BCLK_PIN 5          // I2S Bit Clock pin
+#define I2S_LRC_PIN 3           // I2S Left/Right Clock pin
+#define I2S_DIN_PIN 6           // I2S Data In pin
 
 //================================================================================
 // --- TUNING CONSTANTS ---
@@ -37,16 +42,24 @@
 const long ACCEL_INTERVAL_LOW = 30;   // 30ms: Very gentle start from 0-25% speed
 const long ACCEL_INTERVAL_MID = 10;   // 10ms: Responsive acceleration from 26-80% speed
 const long ACCEL_INTERVAL_HIGH = 25;  // 25ms: Eases into the final top speed (81-100%)
+const int ACCEL_LOGGING_THRESHOLD = 5; // Log if accelerator output is > 5
+
 // Active Braking
 const long BRAKING_INTERVAL = 5;      // 5ms: Very fast deceleration for single-pedal feel
 
 // RC Receiver Calibration
-const int REMOTE_NEUTRAL_MIN = 1480;  // Start of the dead zone
-const int REMOTE_NEUTRAL_MAX = 1520;  // End of the dead zone
+const int REMOTE_THROTTLE_NEUTRAL_MIN = 1490; // Start of Throttle dead zone
+const int REMOTE_THROTTLE_NEUTRAL_MAX = 1530; // End of Throttle dead zone
+const int REMOTE_STEERING_NEUTRAL_MIN = 1480; // Start of Steering dead zone
+const int REMOTE_STEERING_NEUTRAL_MAX = 1520; // End of Steering dead zone
 
-const int MOTOR_PWM_CHANNEL = 0;        // ESP32 LEDC PWM channel (0-15) for the drive motor
+// Collision avoidance
 const int MIN_SAFETY_DISTANCE_CM = 20;  // Safety distance at 0 speed
 const int MAX_SAFETY_DISTANCE_CM = 80;  // Safety distance at max speed
+const int SENSOR_LOGGING_THRESHOLD = MAX_SAFETY_DISTANCE_CM + 20; // Log if object is within 100cm
+
+// Drive Motor
+const int MOTOR_PWM_CHANNEL = 0;        // ESP32 LEDC PWM channel (0-15) for the drive motor
 
 //================================================================================
 // --- GLOBAL OBJECTS ---
@@ -62,16 +75,18 @@ Logger remoteLogger("Remote Control");
 Logger shifterLogger("Gear Shifter");
 Logger driveLogger("Drive Controller");
 Logger steeringLogger("Steering");
+Logger soundLogger("Sound Controller");
 
 // Components (instantiate all our hardware modules with their pins and loggers)
-Accelerator accelerator(PEDAL_PIN, &accelLogger, ACCEL_INTERVAL_LOW, ACCEL_INTERVAL_MID, ACCEL_INTERVAL_HIGH, BRAKING_INTERVAL); 
-ProximitySensor frontSensor(FRONT_TRIG_PIN, FRONT_ECHO_PIN, &frontSensorLogger);
-ProximitySensor backSensor(BACK_TRIG_PIN, BACK_ECHO_PIN, &backSensorLogger);
-RCReceiver remoteControl(REMOTE_THROTTLE_PIN, REMOTE_STEERING_PIN, &remoteLogger, REMOTE_NEUTRAL_MIN, REMOTE_NEUTRAL_MAX);
+Accelerator accelerator(PEDAL_PIN, &accelLogger, ACCEL_INTERVAL_LOW, ACCEL_INTERVAL_MID, ACCEL_INTERVAL_HIGH, BRAKING_INTERVAL, ACCEL_LOGGING_THRESHOLD);
+ProximitySensor frontSensor(FRONT_TRIG_PIN, FRONT_ECHO_PIN, &frontSensorLogger, SENSOR_LOGGING_THRESHOLD);
+ProximitySensor backSensor(BACK_TRIG_PIN, BACK_ECHO_PIN, &backSensorLogger, SENSOR_LOGGING_THRESHOLD);
+RCReceiver remoteControl(REMOTE_THROTTLE_PIN, REMOTE_STEERING_PIN, &remoteLogger, REMOTE_THROTTLE_NEUTRAL_MIN, REMOTE_THROTTLE_NEUTRAL_MAX, REMOTE_STEERING_NEUTRAL_MIN, REMOTE_STEERING_NEUTRAL_MAX);
 GearShifter shifter(SHIFTER_PIN, &shifterLogger);
 DriveController driveController(MOTOR_DIR_PIN, MOTOR_PWM_PIN, MOTOR_PWM_CHANNEL, &driveLogger);
 SteeringController steeringController(STEERING_SERVO_PIN, &steeringLogger);
 SystemStatus systemStatus(RGB_PIN, &systemStatusLogger);
+SoundController soundController(I2S_BCLK_PIN, I2S_LRC_PIN, I2S_DIN_PIN, &soundLogger);
 
 // State Machine: The current state is now defined in the shared header.
 CarState currentState = CarState::STOPPED;
@@ -92,6 +107,7 @@ void setup() {
   shifter.setup();
   driveController.setup();
   steeringController.setup();
+  soundController.setup();
   
   Serial.println("\n--- Single-Pedal Driving Initialized ---");
 }
@@ -108,9 +124,12 @@ void loop() {
   accelerator.update();
   remoteControl.update();
   shifter.update();
+  frontSensor.update(); // CRITICAL: Tell the non-blocking sensor to trigger a new ping
+  backSensor.update();  // CRITICAL: Tell the non-blocking sensor to trigger a new ping
   long frontDistance = frontSensor.getDistanceCm();
   long backDistance = backSensor.getDistanceCm();
   int currentCarSpeed = accelerator.getCurrentSpeed();
+  int engineLoad = accelerator.getEngineLoad();
   Gear currentGear = shifter.getGear();
 
   //----------------------------------------------------------------
@@ -204,4 +223,9 @@ void loop() {
   driveController.setSpeed(finalMotorSpeed);
   steeringController.setSteering(finalSteering);
   systemStatus.update(currentState);
+
+  // Update the sound controller with both speed and load data
+  soundController.setEngineState(currentCarSpeed, engineLoad);
+  // Keep the sound buffer full
+  soundController.update();
 }

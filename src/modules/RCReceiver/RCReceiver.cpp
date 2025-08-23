@@ -1,10 +1,12 @@
 #include "RCReceiver.h"
 #include <Arduino.h>
 
-// The constructor now accepts and saves the dead zone calibration values.
-RCReceiver::RCReceiver(int throttlePin, int steeringPin, Logger* logger, int neutralMin, int neutralMax) :
-  _neutralMin(neutralMin),
-  _neutralMax(neutralMax)
+// The constructor now accepts and saves the dead zone calibration values for both channels.
+RCReceiver::RCReceiver(int throttlePin, int steeringPin, Logger* logger, int throttleNeutralMin, int throttleNeutralMax, int steeringNeutralMin, int steeringNeutralMax) :
+  _throttleNeutralMin(throttleNeutralMin),
+  _throttleNeutralMax(throttleNeutralMax),
+  _steeringNeutralMin(steeringNeutralMin),
+  _steeringNeutralMax(steeringNeutralMax)
 {
   _throttlePin = throttlePin;
   _steeringPin = steeringPin;
@@ -24,8 +26,9 @@ void RCReceiver::update() {
   if (_rawThrottle == 0) _rawThrottle = 1500;
   if (_rawSteering == 0) _rawSteering = 1500;
 
-  if (_logger) {
-    // This log is now our primary calibration tool.
+  // --- Truly Intelligent Logging ---
+  // Only log the RC values if the throttle OR the steering is being used.
+  if (_logger && (isOverriding() || isSteeringActive())) {
     _logger->log(_rawThrottle * 10000 + _rawSteering);
   }
 }
@@ -38,7 +41,12 @@ int RCReceiver::getSteering() {
   return map(_rawSteering, 1000, 2000, -100, 100);
 }
 
+// Checks if the throttle is actively being used.
 bool RCReceiver::isOverriding() {
-  // The override check now uses our tunable dead zone values.
-  return (_rawThrottle < _neutralMin || _rawThrottle > _neutralMax);
+  return (_rawThrottle < _throttleNeutralMin || _rawThrottle > _throttleNeutralMax);
+}
+
+// NEW METHOD: Checks if the steering is actively being used.
+bool RCReceiver::isSteeringActive() {
+  return (_rawSteering < _steeringNeutralMin || _rawSteering > _steeringNeutralMax);
 }

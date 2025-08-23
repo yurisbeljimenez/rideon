@@ -3,45 +3,40 @@
 
 /**
  * @class ProximitySensor
- * @brief Manages an HC-SR04 ultrasonic distance sensor in a fully non-blocking way.
+ * @brief Manages an HC-SR04 sensor with intelligent, non-blocking operation.
  *
- * This advanced version uses hardware interrupts to measure the echo pulse
- * without ever pausing the main program loop, ensuring maximum responsiveness.
+ * This version uses hardware interrupts for non-blocking reads and only logs
+ * distance readings when an object enters a specified "warning zone" threshold.
  */
 class ProximitySensor {
 public:
   /**
    * @brief Constructor for the ProximitySensor.
-   * @param trigPin The GPIO pin connected to the sensor's Trig pin.
-   * @param echoPin The GPIO pin connected to the sensor's Echo pin.
+   * @param trigPin The GPIO pin for the sensor's Trig pin.
+   * @param echoPin The GPIO pin for the sensor's Echo pin.
    * @param logger A pointer to a Logger object for debugging.
+   * @param loggingThreshold The distance in cm below which readings will be logged.
    */
-  ProximitySensor(int trigPin, int echoPin, Logger* logger);
+  ProximitySensor(int trigPin, int echoPin, Logger* logger, int loggingThreshold);
 
   void setup();
-  void update(); // This function now triggers a new ping periodically.
-  long getDistanceCm(); // This function now instantly returns the last known distance.
+  void update();
+  long getDistanceCm();
 
 private:
-  // Pins and Logger
   int _trigPin;
   int _echoPin;
   Logger* _logger;
+  const int _loggingThreshold; 
 
-  // Timing variables for non-blocking ping trigger
   unsigned long _lastPingTime = 0;
-  const int _pingInterval = 60; // Ping every 60ms to avoid echo interference
+  const int _pingInterval = 60;
 
-  // --- Interrupt Service Routine (ISR) Variables ---
-  // 'volatile' is crucial here. It tells the compiler that these variables can
-  // be changed by an external process (the interrupt) at any time.
   static volatile unsigned long _echoStartTime;
   static volatile unsigned long _echoEndTime;
   static volatile bool _newDistanceAvailable;
   volatile long _distanceCm = 0;
 
-  // The ISR must be a static function. We use a pointer to the specific
-  // instance to access its members.
   static ProximitySensor* _instance;
-  static void IRAM_ATTR echo_isr(); // IRAM_ATTR places the ISR in fast RAM
+  static void IRAM_ATTR echo_isr();
 };

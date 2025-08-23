@@ -3,11 +3,11 @@
 
 /**
  * @class Accelerator
- * @brief Manages single-pedal driving with a multi-stage acceleration curve and active braking.
+ * @brief Manages single-pedal driving with intelligent logging.
  *
- * This class reads an analog pedal input and applies a sophisticated smoothing
- * algorithm. It uses a 3-stage curve for smooth acceleration and a separate,
- * much faster rate for deceleration, creating an intuitive single-pedal driving feel.
+ * This class reads an analog pedal input, applies a sophisticated smoothing
+ * algorithm, and provides data on speed and engine load. It only logs its
+ * output when the pedal is actively being used (outside of a dead zone).
  */
 class Accelerator {
 public:
@@ -19,14 +19,16 @@ public:
    * @param accelIntervalMid The fast interval for the "Responsive Mid-Range" zone.
    * @param accelIntervalHigh The slow interval for the "Ease to Top Speed" zone.
    * @param brakingInterval The very fast interval for active braking when the pedal is released.
+   * @param loggingThreshold The speed value above which logging will be active.
    */
-  Accelerator(int pedalPin, Logger* logger, long accelIntervalLow, long accelIntervalMid, long accelIntervalHigh, long brakingInterval);
+  Accelerator(int pedalPin, Logger* logger, long accelIntervalLow, long accelIntervalMid, long accelIntervalHigh, long brakingInterval, int loggingThreshold);
 
   void setup();
   void update();
   int getMotorOutput();
   void overrideSpeed(int speed);
   int getCurrentSpeed();
+  int getEngineLoad();
 
 private:
   // Pin and Logger
@@ -38,7 +40,7 @@ private:
   int _currentSpeed;
   
   // Timing variables
-  unsigned long _previousAccelMillis; // CORRECTED: Changed from _previousUpdateMillis
+  unsigned long _previousAccelMillis;
 
   // Constants for the acceleration curve and braking, set by the constructor
   const long _accelIntervalLow;
@@ -49,4 +51,8 @@ private:
   // Defines the speed ranges for the different acceleration zones
   const int _speedThresholdLow = 25;
   const int _speedThresholdHigh = 80;
+
+  // Intelligent logging variables
+  const int _loggingThreshold;
+  bool _wasLogging = false; // Tracks if we were logging on the previous loop
 };
