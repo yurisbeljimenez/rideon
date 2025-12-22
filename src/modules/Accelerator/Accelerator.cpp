@@ -7,7 +7,9 @@ Accelerator::Accelerator(int pedalPin, Logger* logger, long accelIntervalLow, lo
   _accelIntervalMid(accelIntervalMid), 
   _accelIntervalHigh(accelIntervalHigh),
   _brakingInterval(brakingInterval),
-  _loggingThreshold(loggingThreshold)
+  _loggingThreshold(loggingThreshold),
+  _speedThresholdLow(25),
+  _speedThresholdHigh(80)
 {
   _pedalPin = pedalPin;
   _logger = logger;
