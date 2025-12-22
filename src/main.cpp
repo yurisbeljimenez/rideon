@@ -7,7 +7,6 @@
 #include "./modules/DriveController/DriveController.h"
 #include "./modules/SteeringController/SteeringController.h"
 #include "./modules/SystemStatus/SystemStatus.h"
-#include "./modules/SoundController/SoundController.h"
 #include "./Shared/CarState.h"
 
 //================================================================================
@@ -76,7 +75,6 @@ Logger remoteLogger("Remote Control");
 Logger shifterLogger("Gear Shifter");
 Logger driveLogger("Drive Controller");
 Logger steeringLogger("Steering");
-Logger soundLogger("Sound Controller");
 
 // Components (instantiate all our hardware modules with their pins and loggers)
 Accelerator accelerator(PEDAL_PIN, &accelLogger, ACCEL_INTERVAL_LOW, ACCEL_INTERVAL_MID, ACCEL_INTERVAL_HIGH, BRAKING_INTERVAL, ACCEL_LOGGING_THRESHOLD);
@@ -87,7 +85,6 @@ GearShifter shifter(SHIFTER_PIN, &shifterLogger);
 DriveController driveController(MOTOR_DIR_PIN, MOTOR_PWM_PIN, MOTOR_PWM_CHANNEL, &driveLogger);
 SteeringController steeringController(STEERING_SERVO_PIN, &steeringLogger);
 SystemStatus systemStatus(RGB_PIN, &systemStatusLogger);
-SoundController soundController(I2S_BCLK_PIN, I2S_LRC_PIN, I2S_DIN_PIN, &soundLogger);
 
 // State Machine: The current state is now defined in the shared header.
 CarState currentState = CarState::STOPPED;
@@ -108,7 +105,6 @@ void setup() {
   shifter.setup();
   driveController.setup();
   steeringController.setup();
-  soundController.setup();
   
   Serial.println("\n--- Ride-On Car Final Version Initialized ---");
 }
@@ -224,7 +220,4 @@ void loop() {
   steeringController.setSteering(finalSteering);
   systemStatus.update(currentState);
 
-  // The sound controller now reacts to the final motor command.
-  soundController.setMotorCommand(finalMotorSpeed);
-  soundController.update();
 }

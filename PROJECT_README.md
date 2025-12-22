@@ -60,7 +60,6 @@ The software is engineered using modern design patterns to ensure it is robust, 
 │   │   ├── Logger/                 # Debug logging system
 │   │   ├── ProximitySensor/        # Ultrasonic obstacle detection
 │   │   ├── RCReceiver/             # Remote control receiver
-│   │   ├── SoundController/        # Audio feedback system
 │   │   ├── SteeringController/     # Steering control system
 │   │   └── SystemStatus/           # LED status indicators
 │   └── Shared/                     # Shared data structures

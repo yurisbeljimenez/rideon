@@ -47,7 +47,6 @@ A complete, safety-focused software controller for a child's ride-on car built a
 │   │   ├── Logger/                 # Debug logging system
 │   │   ├── ProximitySensor/        # Ultrasonic obstacle detection
 │   │   ├── RCReceiver/             # Remote control receiver
-│   │   ├── SoundController/        # Audio feedback system
 │   │   ├── SteeringController/     # Steering control system
 │   │   └── SystemStatus/           # LED status indicators
 │   └── Shared/                     # Shared data structures
