@@ -13,21 +13,44 @@ Accelerator::Accelerator(int pedalPin, Logger* logger, long accelIntervalLow, lo
 {
   _pedalPin = pedalPin;
   _logger = logger;
+  
+  // Initialize the analog filter buffer
+  _filterBuffer = new int[_filterWindowSize];
+  for (int i = 0; i < _filterWindowSize; i++) {
+    _filterBuffer[i] = 0;
+  }
 }
 
 // setup() is unchanged
 void Accelerator::setup() {
   _currentSpeed = 0;
   _desiredSpeed = 0;
+  
+  // Initialize the filter buffer
+  for (int i = 0; i < _filterWindowSize; i++) {
+    _filterBuffer[i] = 0;
+  }
+  
   if (_logger) {
     _logger->log("Initialized");
   }
 }
 
-// update() is unchanged
+// update() with analog filtering
 void Accelerator::update() {
-  int pedalValue = analogRead(_pedalPin);
-  _desiredSpeed = map(pedalValue, 0, 4095, 0, 100);
+  // Read the raw analog value
+  int rawPedalValue = analogRead(_pedalPin);
+  
+  // Apply moving average filter to reduce noise
+  _filterSum = _filterSum - _filterBuffer[_filterIndex];
+  _filterBuffer[_filterIndex] = rawPedalValue;
+  _filterSum = _filterSum + rawPedalValue;
+  _filterIndex = (_filterIndex + 1) % _filterWindowSize;
+  
+  // Use the filtered value for speed calculation
+  int filteredPedalValue = _filterSum / _filterWindowSize;
+  
+  _desiredSpeed = map(filteredPedalValue, 0, 4095, 0, 100);
 
   long currentInterval;
   if (_currentSpeed < _desiredSpeed) {

@@ -14,7 +14,7 @@
 // A central place to define all hardware connections to the ESP32.
 //================================================================================
 // Inputs
-#define RGB_PIN 48              // Onboard RGB LED light.
+#define RGB_PIN 15              // Onboard RGB LED light (moved from pin 48 for better signal integrity).
 #define PEDAL_PIN 4             // Analog pin for the accelerator pedal
 #define SHIFTER_PIN 16          // Digital pin for the FWD/REV gear shifter button
 #define REMOTE_THROTTLE_PIN 15  // Digital pin for RC receiver throttle (CH2)
@@ -106,7 +106,100 @@ void setup() {
   driveController.setup();
   steeringController.setup();
   
-  Serial.println("\n--- Ride-On Car Final Version Initialized ---");
+  // Check if all critical components initialized properly
+  bool initializationSuccess = true;
+  
+  if (!systemStatus.isWorking()) {
+    Serial.println("ERROR: SystemStatus failed to initialize");
+    initializationSuccess = false;
+  }
+  
+  if (!driveController.isInitialized()) {
+    Serial.println("ERROR: DriveController failed to initialize");
+    initializationSuccess = false;
+  }
+  
+  if (initializationSuccess) {
+    Serial.println("\n--- Ride-On Car Final Version Initialized ---");
+    // Diagnostic information
+    Serial.println("Diagnostic Info:");
+    Serial.print("Motor PWM Channel: ");
+    Serial.println(MOTOR_PWM_CHANNEL);
+    Serial.print("Front Sensor Trig Pin: ");
+    Serial.println(FRONT_TRIG_PIN);
+    Serial.print("Front Sensor Echo Pin: ");
+    Serial.println(FRONT_ECHO_PIN);
+    Serial.print("Back Sensor Trig Pin: ");
+    Serial.println(BACK_TRIG_PIN);
+    Serial.print("Back Sensor Echo Pin: ");
+    Serial.println(BACK_ECHO_PIN);
+  } else {
+    Serial.println("\n--- Ride-On Car Initialization FAILED ---");
+  }
+}
+
+// Diagnostic function to check system status
+void printSystemStatus() {
+  Serial.println("--- System Status ---");
+  Serial.print("Current State: ");
+  switch(currentState) {
+    case CarState::STOPPED:
+      Serial.println("STOPPED");
+      break;
+    case CarState::FORWARD:
+      Serial.println("FORWARD");
+      break;
+    case CarState::REVERSE:
+      Serial.println("REVERSE");
+      break;
+    case CarState::AVOIDING_OBSTACLE:
+      Serial.println("AVOIDING_OBSTACLE");
+      break;
+    case CarState::MANUAL_OVERRIDE:
+      Serial.println("MANUAL_OVERRIDE");
+      break;
+  }
+  
+  // Check sensor status
+  long frontDistance = frontSensor.getDistanceCm();
+  long backDistance = backSensor.getDistanceCm();
+  
+  Serial.print("Front Distance: ");
+  if (frontDistance < 0) {
+    Serial.println("ERROR");
+  } else {
+    Serial.print(frontDistance);
+    Serial.println(" cm");
+  }
+  
+  Serial.print("Back Distance: ");
+  if (backDistance < 0) {
+    Serial.println("ERROR");
+  } else {
+    Serial.print(backDistance);
+    Serial.println(" cm");
+  }
+  
+  // Check motor status
+  Serial.print("Motor Speed: ");
+  Serial.println(accelerator.getMotorOutput());
+  
+  // Check LED status
+  Serial.print("LED Status: ");
+  if (systemStatus.isWorking()) {
+    Serial.println("OK");
+  } else {
+    Serial.println("ERROR");
+  }
+  
+  // Check motor controller status
+  Serial.print("Motor Controller: ");
+  if (driveController.isInitialized()) {
+    Serial.println("OK");
+  } else {
+    Serial.println("ERROR");
+  }
+  Serial.println("---------------------");
 }
 
 //================================================================================

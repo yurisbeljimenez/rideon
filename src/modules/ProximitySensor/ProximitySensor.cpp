@@ -65,12 +65,47 @@ void ProximitySensor::update() {
     if (_logger && _smoothedDistanceCm > 0 && _smoothedDistanceCm < _loggingThreshold) {
       _logger->log(_smoothedDistanceCm);
     }
+    
+    // Update last echo time for timeout detection
+    _lastEchoTime = currentTime;
+  }
+  else {
+    // Check for sensor timeout - if no echo received within timeout period
+    if (currentTime - _lastEchoTime > _sensorTimeout && _smoothedDistanceCm > 0) {
+      // Sensor timed out, set distance to a safe value or keep previous value
+      _smoothedDistanceCm = -1; // Mark as timeout error
+      
+      if (_logger) {
+        _logger->log("Sensor Timeout");
+      }
+    }
+  }
+  
+  // Validate sensor readings to prevent invalid data
+  if (_smoothedDistanceCm < -1) { // -1 indicates timeout, < -1 indicates error
+    _smoothedDistanceCm = 0; // Reset to 0 for invalid readings
   }
 }
 
 // This function now instantly returns the last known SMOOTHED distance.
 long ProximitySensor::getDistanceCm() {
   return _smoothedDistanceCm;
+}
+
+/**
+ * @brief Get the raw sensor reading (for diagnostic purposes).
+ * @return Raw distance reading or -1 if error.
+ */
+long ProximitySensor::getRawDistanceCm() {
+  // Return the most recent raw reading (before smoothing)
+  // We need to calculate this from the current values
+  if (_newDistanceAvailable) {
+    long duration = _echoEndTime - _echoStartTime;
+    if (duration > 0) {
+      return duration * 0.0343 / 2;
+    }
+  }
+  return -1; // Error or no reading
 }
 
 // This is the static C-style function that the hardware interrupt calls.
@@ -88,5 +123,8 @@ void IRAM_ATTR ProximitySensor::handleInterrupt() {
   } else {
     _echoEndTime = micros();
     _newDistanceAvailable = true;
+    
+    // Update last echo time when we get an echo
+    _lastEchoTime = millis();
   }
 }

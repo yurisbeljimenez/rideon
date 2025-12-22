@@ -15,6 +15,8 @@
  * - Solid Yellow: Moving in Reverse
  * - Pulsing Red: Avoiding Obstacle
  * - Pulsing White: Manual Override
+ * 
+ * This version includes error handling for LED failures and improved reliability.
  */
 class SystemStatus {
 public:
@@ -35,11 +37,21 @@ public:
    * @param state The current CarState to reflect visually.
    */
   void update(CarState state);
+  
+  /**
+   * @brief Check if the LED system is functioning properly.
+   * @return True if LED is working, false otherwise.
+   */
+  bool isWorking();
 
 private:
   int _pin;                    // GPIO pin connected to the LED
   Logger* _logger;             // Logger for debugging output
   Adafruit_NeoPixel _pixel;    // NeoPixel LED strip object
+  
+  // Error handling
+  bool _ledInitialized = false;  // Track if LED initialization was successful
+  bool _ledError = false;        // Track if there's been an LED error
 
   /**
    * @brief Set LED to a solid color (no pulsing).

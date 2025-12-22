@@ -9,6 +9,8 @@
  * interrupts for fully non-blocking distance reads, correctly handles multiple
  * sensor instances, applies an internal moving average filter to smooth out noisy
  * readings, and only logs data when an object enters a specified "warning zone".
+ * 
+ * This version includes timeout protection to handle sensor communication issues.
  */
 class ProximitySensor {
 public:
@@ -19,12 +21,18 @@ public:
    * @param logger A pointer to a Logger object for debugging.
    * @param loggingThreshold The distance in cm below which readings will be logged.
    * @param windowSize The number of readings to include in the moving average filter.
-   */
+ */
   ProximitySensor(int trigPin, int echoPin, Logger* logger, int loggingThreshold, int windowSize);
 
   void setup();
   void update(); // Triggers pings and updates the smoothed average.
   long getDistanceCm(); // Instantly returns the last known smoothed distance.
+  
+  /**
+   * @brief Get the raw sensor reading (for diagnostic purposes).
+   * @return Raw distance reading or -1 if error.
+   */
+  long getRawDistanceCm();
 
 private:
   // Pins, Logger, and Tuning
@@ -49,6 +57,10 @@ private:
   volatile unsigned long _echoStartTime = 0;
   volatile unsigned long _echoEndTime = 0;
   volatile bool _newDistanceAvailable = false;
+  
+  // Timeout handling
+  const unsigned long _sensorTimeout = 100; // Timeout in milliseconds for sensor responses
+  unsigned long _lastEchoTime = 0;
   
   // The ISR function that will be called by the hardware.
   void IRAM_ATTR handleInterrupt();

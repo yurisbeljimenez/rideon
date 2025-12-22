@@ -3,7 +3,7 @@
 
 /**
  * @class Accelerator
- * @brief Manages single-pedal driving with intelligent logging.
+ * @brief Manages single-pedal driving with intelligent logging and analog filtering.
  *
  * This class reads an analog pedal input, applies a sophisticated smoothing
  * algorithm, and provides data on speed. It only logs its
@@ -13,6 +13,8 @@
  * 1. Gentle Start (0-25% speed) - Slow response for smooth starts
  * 2. Responsive Mid-Range (26-80% speed) - Fast response for maneuvering
  * 3. Ease to Top Speed (81-100% speed) - Gentle roll-off to prevent sudden acceleration
+ * 
+ * This version includes analog filtering to reduce noise from motor drivers and other sources.
  */
 class Accelerator {
 public:
@@ -85,4 +87,10 @@ private:
   // Intelligent logging variables
   const int _loggingThreshold;      // Speed threshold for logging activity
   bool _wasLogging = false;         // Tracks if we were previously logging
+  
+  // Analog filtering variables
+  const int _filterWindowSize = 8;  // Size of the moving average filter window
+  int* _filterBuffer;               // Buffer to store recent analog readings
+  int _filterIndex = 0;             // Current index in the filter buffer
+  long _filterSum = 0;              // Running sum of values in the filter buffer
 };

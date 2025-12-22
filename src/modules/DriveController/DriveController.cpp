@@ -25,10 +25,21 @@ void DriveController::setup() {
   ledcSetup(_pwmChannel, 5000, 8); // 5kHz frequency, 8-bit resolution (0-255).
   ledcAttachPin(_pwmPin, _pwmChannel);
 
+  // Check if PWM setup was successful
+  if (ledcRead(_pwmChannel) >= 0) {
+    _initialized = true;
+  }
+
   if (_logger) _logger->log("Initialized");
 }
 
 void DriveController::setSpeed(int speed) {
+  // Validate that the controller is initialized before attempting to set speed
+  if (!_initialized) {
+    if (_logger) _logger->log("DriveController not initialized");
+    return;
+  }
+  
   speed = constrain(speed, -255, 255);
 
   // Set the direction pin based on the sign of the speed.
@@ -45,4 +56,8 @@ void DriveController::setSpeed(int speed) {
   ledcWrite(_pwmChannel, dutyCycle);
 
   if (_logger) _logger->log(speed);
+}
+
+bool DriveController::isInitialized() {
+  return _initialized;
 }

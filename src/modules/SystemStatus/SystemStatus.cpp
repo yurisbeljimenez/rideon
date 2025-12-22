@@ -38,7 +38,15 @@ SystemStatus::SystemStatus(int pin, Logger* logger) :
 void SystemStatus::setup() {
   _pixel.begin();
   _pixel.show();
-  if (_logger) _logger->log("SystemStatus initialized");
+  
+  // Check if initialization was successful
+  if (_pixel.numPixels() > 0) {
+    _ledInitialized = true;
+    if (_logger) _logger->log("SystemStatus initialized");
+  } else {
+    _ledError = true;
+    if (_logger) _logger->log("SystemStatus initialization failed");
+  }
 }
 
 /**
@@ -52,6 +60,11 @@ void SystemStatus::setup() {
  * @param state The current CarState to reflect visually
  */
 void SystemStatus::update(CarState state) {
+  // If there was an LED error, don't attempt to update
+  if (_ledError) {
+    return;
+  }
+  
   switch(state) {
     case CarState::STOPPED:
       setSolidColor(COLOR_BLUE);
@@ -72,6 +85,14 @@ void SystemStatus::update(CarState state) {
 }
 
 /**
+ * @brief Check if the LED system is functioning properly.
+ * @return True if LED is working, false otherwise.
+ */
+bool SystemStatus::isWorking() {
+  return _ledInitialized && !_ledError;
+}
+
+/**
  * @brief Set LED to a solid color (no pulsing)
  * 
  * This function sets the LED to a constant color. It only updates
@@ -81,6 +102,8 @@ void SystemStatus::update(CarState state) {
  * @param color The RGB color value to set
  */
 void SystemStatus::setSolidColor(uint32_t color) {
+  if (_ledError) return;
+  
   if (_pixel.getPixelColor(0) != color) {
     _pixel.setPixelColor(0, color);
     _pixel.show();
@@ -97,6 +120,8 @@ void SystemStatus::setSolidColor(uint32_t color) {
  * @param color The RGB color value for pulsing effect
  */
 void SystemStatus::setPulsingColor(uint32_t color) {
+  if (_ledError) return;
+  
   unsigned long currentMillis = millis();
   if (currentMillis - _previousMillis >= _pulseInterval) {
     _previousMillis = currentMillis;

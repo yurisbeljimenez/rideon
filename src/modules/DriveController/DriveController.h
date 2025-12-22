@@ -7,6 +7,8 @@
  *
  * Takes a speed command (-255 to 255) and generates the appropriate
  * Direction (digital) and Speed (hardware PWM) signals.
+ * 
+ * This version includes error handling for motor control issues.
  */
 class DriveController {
 public:
@@ -21,10 +23,19 @@ public:
 
   void setup();
   void setSpeed(int speed); // Sets the motor speed and direction.
+  
+  /**
+   * @brief Check if the drive controller is properly initialized.
+   * @return True if initialized successfully, false otherwise.
+   */
+  bool isInitialized();
 
 private:
   int _dirPin;
   int _pwmPin;
   int _pwmChannel;
   Logger* _logger;
+  
+  // Error tracking
+  bool _initialized = false;  // Track if controller is properly initialized
 };
