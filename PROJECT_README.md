@@ -53,6 +53,7 @@ The software is engineered using modern design patterns to ensure it is robust, 
 .
 ├── src/
 │   ├── main.cpp                    # Main application entry point
+│   ├── pins.h                      # Pin definitions and tuning constants
 │   ├── modules/                    # All system modules
 │   │   ├── Accelerator/            # Accelerator pedal controller
 │   │   ├── DriveController/        # Motor drive control
@@ -71,6 +72,14 @@ The software is engineered using modern design patterns to ensure it is robust, 
 ├── CODE_OF_CONDUCT.md             # Code of conduct
 └── PROJECT_README.md              # This file
 ```
+
+## Hardware Integration Guide
+
+**Before building the physical system, please review the comprehensive hardware guide:**
+
+- **[HARDWARE_INTEGRATION_GUIDE.md](../HARDWARE_INTEGRATION_GUIDE.md)** - Complete wiring diagrams, component lists, pin connections, power requirements, assembly instructions, and testing procedures
+
+For detailed documentation of each module, see the README files in their respective directories.
 
 ## Development Setup
 
