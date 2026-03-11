@@ -18,15 +18,22 @@ void GearShifter::update() {
 
   // Detect the moment the button goes from HIGH to LOW (a press event).
   if (_lastButtonState == HIGH && currentButtonState == LOW) {
-    // Toggle the gear state.
-    if (_currentGear == Gear::FORWARD) {
-      _currentGear = Gear::REVERSE;
-      if (_logger) _logger->log("REVERSE");
-    } else {
-      _currentGear = Gear::FORWARD;
-      if (_logger) _logger->log("FORWARD");
+    unsigned long currentMillis = millis();
+    
+    // Non-blocking debounce: only process if enough time has passed
+    if (currentMillis - _lastDebounceTime >= _debounceDelay) {
+      // Toggle the gear state.
+      if (_currentGear == Gear::FORWARD) {
+        _currentGear = Gear::REVERSE;
+        if (_logger) _logger->log("REVERSE");
+      } else {
+        _currentGear = Gear::FORWARD;
+        if (_logger) _logger->log("FORWARD");
+      }
+      
+      // Update debounce timer to prevent multiple triggers
+      _lastDebounceTime = currentMillis;
     }
-    delay(50); // Simple debounce to prevent multiple triggers.
   }
 
   _lastButtonState = currentButtonState;

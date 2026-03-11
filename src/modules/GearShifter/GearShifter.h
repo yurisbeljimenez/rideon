@@ -31,6 +31,8 @@ private:
   Logger* _logger;
   Gear _currentGear = Gear::FORWARD; // Default to Forward gear.
 
-  // For detecting a single press event.
-  int _lastButtonState = HIGH; 
+  // For non-blocking debounce timing
+  unsigned long _lastDebounceTime = 0;
+  const unsigned long _debounceDelay = 50;  // Debounce delay in ms
+  int _lastButtonState = HIGH;
 };
