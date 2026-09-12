@@ -24,6 +24,8 @@ public:
  */
   ProximitySensor(int trigPin, int echoPin, Logger* logger, int loggingThreshold, int windowSize);
 
+    ~ProximitySensor();  // Add destructor declaration
+
   void setup();
   void update(); // Triggers pings and updates the smoothed average.
   long getDistanceCm(); // Instantly returns the last known smoothed distance.

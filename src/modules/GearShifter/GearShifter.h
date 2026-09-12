@@ -17,6 +17,8 @@ public:
    */
   GearShifter(int pin, Logger* logger);
 
+  virtual ~GearShifter() {}  // Add virtual destructor
+
   void setup();
   void update(); // Checks for a button press to toggle the gear.
   Gear getGear();  // Returns the current gear (Gear::FORWARD or Gear::REVERSE).

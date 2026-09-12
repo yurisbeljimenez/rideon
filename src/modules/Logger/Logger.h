@@ -32,5 +32,5 @@ public:
 private:
   const char* _scope;                 // The name of this logger instance.
   long _lastNumericValue = -999999;   // Stores the last logged number to check for changes.
-  String _lastMessage;                // Stores the last logged message to check for changes.
+  const char* _lastMessagePtr = nullptr;  // Stores pointer to last logged message
 };

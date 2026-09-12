@@ -22,13 +22,13 @@ void Logger::log(long value) {
 // Logs a text message.
 void Logger::log(const char* message) {
   // The core logic: only proceed if the new message is different from the last one.
-  if (_lastMessage != message) {
+  if (_lastMessagePtr != message) {
     Serial.print("[");
     Serial.print(_scope);
     Serial.print("] State: ");
     Serial.println(message);
 
-    // Update the stored message for the next check.
-    _lastMessage = message;
+    // Update the stored pointer for the next check.
+    _lastMessagePtr = message;
   }
 }
