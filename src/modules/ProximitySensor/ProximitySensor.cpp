@@ -49,10 +49,13 @@ void ProximitySensor::update() {
   if (_newDistanceAvailable) {
     long duration = _echoEndTime - _echoStartTime;
     long rawDistance = 0;
-    if (duration > 0) {
+    // Sanity window: ~0.9 cm .. ~430 cm. Rejects electrical noise glitches
+    // and impossible (negative/too long) pulse widths.
+    if (duration >= 50 && duration <= 25000) {
       rawDistance = duration * 0.0343 / 2;
     }
     _newDistanceAvailable = false; // Reset the flag
+    _lastRawCm = rawDistance;
 
     // --- Moving Average Filter Logic ---
     _total = _total - _readings[_readIndex];
@@ -60,30 +63,27 @@ void ProximitySensor::update() {
     _total = _total + _readings[_readIndex];
     _readIndex = (_readIndex + 1) % _windowSize; // Wrap index
     _smoothedDistanceCm = _total / _windowSize;
+    _valid = true;  // we have a fresh, trustworthy reading again
 
     // --- Intelligent Logging Logic ---
     if (_logger && _smoothedDistanceCm > 0 && _smoothedDistanceCm < _loggingThreshold) {
       _logger->log(_smoothedDistanceCm);
     }
-    
+
     // Update last echo time for timeout detection
     _lastEchoTime = currentTime;
   }
   else {
-    // Check for sensor timeout - if no echo received within timeout period
-    if (currentTime - _lastEchoTime > _sensorTimeout && _smoothedDistanceCm > 0) {
-      // Sensor timed out, set distance to a safe value or keep previous value
-      _smoothedDistanceCm = -1; // Mark as timeout error
-      
-      if (_logger) {
-        _logger->log("Sensor Timeout");
+    // Check for sensor timeout - if no echo received within timeout period.
+    // Fail CLOSED: mark the reading invalid so the control loop treats it as a
+    // hazard while the car is moving, instead of silently assuming "no obstacle".
+    if (currentTime - _lastEchoTime > _sensorTimeout) {
+      if (_valid) {
+        _smoothedDistanceCm = -1; // Mark as timeout error
+        _valid = false;
+        if (_logger) _logger->log("Sensor Timeout");
       }
     }
-  }
-  
-  // Validate sensor readings to prevent invalid data
-  if (_smoothedDistanceCm < -1) { // -1 indicates timeout, < -1 indicates error
-    _smoothedDistanceCm = 0; // Reset to 0 for invalid readings
   }
 }
 
@@ -97,15 +97,11 @@ long ProximitySensor::getDistanceCm() {
  * @return Raw distance reading or -1 if error.
  */
 long ProximitySensor::getRawDistanceCm() {
-  // Return the most recent raw reading (before smoothing)
-  // We need to calculate this from the current values
-  if (_newDistanceAvailable) {
-    long duration = _echoEndTime - _echoStartTime;
-    if (duration > 0) {
-      return duration * 0.0343 / 2;
-    }
-  }
-  return -1; // Error or no reading
+  return _lastRawCm; // -1 until the first successful echo
+}
+
+bool ProximitySensor::isValid() {
+  return _valid;
 }
 
 // This is the static C-style function that the hardware interrupt calls.

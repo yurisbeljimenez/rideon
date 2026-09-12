@@ -1,11 +1,6 @@
 #pragma once
 #include "../Logger/Logger.h"
-
-// Scoped enum for the possible gear states.
-enum class Gear {
-  FORWARD,
-  REVERSE
-};
+#include "../../Shared/CarState.h"  // provides the shared Gear enum (single definition)
 
 /**
  * @class GearShifter

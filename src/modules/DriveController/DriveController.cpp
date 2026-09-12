@@ -1,5 +1,6 @@
 #include "DriveController.h"
 #include <Arduino.h>
+#include "../../pins.h"
 
 /*
  * =================================================================
@@ -22,7 +23,7 @@ void DriveController::setup() {
   pinMode(_dirPin, OUTPUT);
 
   // Configure the ESP32's LEDC hardware for PWM signal generation.
-  ledcSetup(_pwmChannel, 5000, 8); // 5kHz frequency, 8-bit resolution (0-255).
+  ledcSetup(_pwmChannel, MOTOR_PWM_FREQUENCY, MOTOR_PWM_RESOLUTION);
   ledcAttachPin(_pwmPin, _pwmChannel);
 
   // Check if PWM setup was successful

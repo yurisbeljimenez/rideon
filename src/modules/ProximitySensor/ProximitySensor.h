@@ -27,12 +27,23 @@ public:
   void setup();
   void update(); // Triggers pings and updates the smoothed average.
   long getDistanceCm(); // Instantly returns the last known smoothed distance.
-  
+
   /**
    * @brief Get the raw sensor reading (for diagnostic purposes).
    * @return Raw distance reading or -1 if error.
    */
   long getRawDistanceCm();
+
+  /**
+   * @brief Report whether the most recent reading is valid and fresh.
+   *
+   * False before the first successful echo, and after a sensor timeout.
+   * The control loop uses this to fail CLOSED: a dead/disconnected sensor
+   * while the car is moving must be treated as a hazard, not as "no obstacle".
+   *
+   * @return true if getDistanceCm() is a trustworthy, fresh measurement.
+   */
+  bool isValid();
 
 private:
   // Pins, Logger, and Tuning
@@ -51,6 +62,10 @@ private:
   int _readIndex = 0;
   long _total = 0;
   volatile long _smoothedDistanceCm = 0;
+  volatile bool _valid = false;      // true when _smoothedDistanceCm is a fresh, trustworthy reading
+
+  // Diagnostic: most recent raw (unfiltered) reading
+  volatile long _lastRawCm = -1;
 
   // --- Interrupt Service Routine (ISR) Variables ---
   // These are specific to each instance of the class.

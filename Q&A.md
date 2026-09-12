@@ -44,7 +44,7 @@ Once these are met, the car returns to the `STOPPED` state, and the driver can t
 
 ### **Q5: How do I change how the car feels to drive?**
 
-**A:** All performance tuning is handled by changing a few clearly-labeled constants at the top of the **`main.cpp`** file. You do not need to edit the logic in the modules.
+**A:** All performance tuning is handled by changing clearly-labeled constants in **`src/pins.h`** (the single source of truth for pin assignments and tuning — `main.cpp` includes it and defines nothing of its own). You do not need to edit the logic in the modules.
 
 - **To change acceleration:** Adjust the `ACCEL_INTERVAL_LOW`, `_MID`, and `_HIGH` values. A smaller number means faster acceleration.
 - **To change braking strength:** Adjust the `BRAKING_INTERVAL`. A smaller number means a faster, more aggressive stop.
