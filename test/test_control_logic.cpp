@@ -62,7 +62,7 @@ void test_collision_avoidance_reverse() {
     ControlInputs in = safeInputs();
     in.pedalIntent = 50; in.gear = Gear::REVERSE;
     in.backCm = 10; in.backValid = true;
-    ControlOutputs out = control::stepControl(in, st, t);
+    control::stepControl(in, st, t);
     assert(st.state == CarState::AVOIDING_OBSTACLE);
     assert(st.avoidDir == -1);
     printf("[PASS] test_collision_avoidance_reverse\n");
