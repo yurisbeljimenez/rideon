@@ -123,9 +123,9 @@ void IRAM_ATTR ProximitySensor::handleInterrupt() {
     // Update last echo time when we get an echo
     _lastEchoTime = millis();
   }
+}
 
 // Destructor to clean up dynamically allocated memory
 ProximitySensor::~ProximitySensor() {
     delete[] _readings;
-}
 }
