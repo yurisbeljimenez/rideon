@@ -15,6 +15,11 @@
 // All pin assignments and hardware tuning constants come from pins.h
 // (single source of truth — do not re-declare them here).
 
+// Watchdog timer: resets the ESP32 if loop() stops running (system hang).
+// The loop must call esp_task_wdt_feed() at least once per timeout period.
+// 5 seconds is generous for normal operation but catches infinite loops.
+#define WDT_TIMEOUT_SEC 5
+
 // Logger instances for each module
 Logger systemStatusLogger("System Status");
 Logger accelLogger("Accelerator");
@@ -104,6 +109,11 @@ void pedalCalibrationDiagnostic() {
 void setup() {
   Serial.begin(115200);
 
+  // Initialize hardware watchdog timer to catch system hangs
+  esp_task_wdt_init(WDT_TIMEOUT_SEC);
+  esp_task_wdt_add(NULL);  // NULL = current task (the Arduino loop task)
+  Serial.println("Watchdog timer initialized (" + String(WDT_TIMEOUT_SEC) + "s timeout)");
+
   pinMode(ESTOP_PIN, INPUT_PULLUP);
 
   systemStatus.setup();
@@ -163,6 +173,9 @@ void setup() {
 }
 
 void loop() {
+  // Feed watchdog to signal the system is alive
+  esp_task_wdt_feed();
+
   // PHASE 1: DATA GATHERING (all non-blocking)
   accelerator.update();
   remoteControl.update();

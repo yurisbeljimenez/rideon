@@ -89,6 +89,48 @@ struct ControlOutputs {
 
 namespace control {
 
+//================================================================================
+// STATE MACHINE TRANSITION DIAGRAM
+//
+//   ┌─────────────────────────────────────────────────────────────────┐
+//   │                        E-STOP (Priority 0)                       │
+//   │   ANY STATE ──────────────────────────────► STOPPED (hard stop)  │
+//   └─────────────────────────────────────────────────────────────────┘
+//
+//   ┌─────────────────────────────────────────────────────────────────┐
+//   │                 COLLISION AVOIDANCE (Priority 1)                │
+//   │                                                                 │
+//   │   FORWARD ──[obstacle ahead]──────────► AVOIDING_OBSTACLE       │
+//   │   REVERSE ──[obstacle behind]─────────► AVOIDING_OBSTACLE       │
+//   │   MANUAL_OVERRIDE ──[obstacle]────────► AVOIDING_OBSTACLE       │
+//   │                                                                 │
+//   │   AVOIDING_OBSTACLE ──[clear + pedal released]──► STOPPED       │
+//   │   AVOIDING_OBSTACLE ──[clear + pedal held]────► HOLD (fault)    │
+//   └─────────────────────────────────────────────────────────────────┘
+//
+//   ┌─────────────────────────────────────────────────────────────────┐
+//   │                 RC OVERRIDE (Priority 2)                        │
+//   │                                                                 │
+//   │   STOPPED ──[RC throttle active]──► MANUAL_OVERRIDE             │
+//   │   FORWARD ──[RC throttle active]─► MANUAL_OVERRIDE              │
+//   │   REVERSE ──[RC throttle active]─► MANUAL_OVERRIDE              │
+//   │                                                                 │
+//   │   MANUAL_OVERRIDE ──[RC lost]──► STOPPED (fail-safe)            │
+//   └─────────────────────────────────────────────────────────────────┘
+//
+//   ┌─────────────────────────────────────────────────────────────────┐
+//   │                 CHILD PEDAL (Priority 3)                        │
+//   │                                                                 │
+//   │   STOPPED ──[pedal > deadband + speed > threshold]──► FORWARD   │
+//   │   STOPPED ──[pedal > deadband + speed > threshold]──► REVERSE   │
+//   │   FORWARD ──[pedal = 0, speed → 0]──────────────────► STOPPED   │
+//   │   REVERSE ──[pedal = 0, speed → 0]─────────────────► STOPPED    │
+//   └─────────────────────────────────────────────────────────────────┘
+//
+// PRIORITY HIERARCHY: E-STOP > COLLISION > RC > PEDAL
+// Each higher priority can preempt lower priorities at any time.
+//================================================================================
+
 inline int clampI(int v, int lo, int hi) {
   return v < lo ? lo : (v > hi ? hi : v);
 }
