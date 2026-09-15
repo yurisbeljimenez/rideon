@@ -32,12 +32,14 @@ void ProximitySensor::setup() {
   }
 }
 
-// The update function now handles both pinging and smoothing.
+// The update function now handles both pinging, smoothing, and auto-recovery.
 void ProximitySensor::update() {
-  // 1. Periodically trigger a new sensor ping.
   unsigned long currentTime = millis();
+
+  // 1. Periodically trigger a new sensor ping.
   if (currentTime - _lastPingTime >= _pingInterval) {
     _lastPingTime = currentTime;
+    _pendingTimeout = false; // Reset timeout counter for this ping cycle
     digitalWrite(_trigPin, LOW);
     delayMicroseconds(2);
     digitalWrite(_trigPin, HIGH);
@@ -49,8 +51,7 @@ void ProximitySensor::update() {
   if (_newDistanceAvailable) {
     long duration = _echoEndTime - _echoStartTime;
     long rawDistance = 0;
-    // Sanity window: ~0.9 cm .. ~430 cm. Rejects electrical noise glitches
-    // and impossible (negative/too long) pulse widths.
+    // Sanity window: ~0.9 cm .. ~430 cm. Rejects electrical noise glitches.
     if (duration >= 50 && duration <= 25000) {
       rawDistance = duration * 0.0343 / 2;
     }
@@ -63,7 +64,23 @@ void ProximitySensor::update() {
     _total = _total + _readings[_readIndex];
     _readIndex = (_readIndex + 1) % _windowSize; // Wrap index
     _smoothedDistanceCm = _total / _windowSize;
-    _valid = true;  // we have a fresh, trustworthy reading again
+
+    // --- Auto-recovery: valid echo resets miss count ---
+    _missCount = 0;
+
+    if (_wasInvalid) {
+      // We were in the invalid state; count consecutive good readings to recover.
+      _goodCount++;
+      if (_goodCount >= RECOVER_THRESHOLD) {
+        _valid = true;
+        _wasInvalid = false;
+        _goodCount = 0;
+        if (_logger) _logger->log("Sensor Recovered");
+      }
+    } else {
+      _valid = true;
+      _goodCount = 0;
+    }
 
     // --- Intelligent Logging Logic ---
     if (_logger && _smoothedDistanceCm > 0 && _smoothedDistanceCm < _loggingThreshold) {
@@ -74,13 +91,17 @@ void ProximitySensor::update() {
     _lastEchoTime = currentTime;
   }
   else {
-    // Check for sensor timeout - if no echo received within timeout period.
-    // Fail CLOSED: mark the reading invalid so the control loop treats it as a
-    // hazard while the car is moving, instead of silently assuming "no obstacle".
-    if (currentTime - _lastEchoTime > _sensorTimeout) {
-      if (_valid) {
-        _smoothedDistanceCm = -1; // Mark as timeout error
+    // 3. No new echo — check for timeout (counted once per ping cycle).
+    if (!_pendingTimeout && (currentTime - _lastEchoTime) > _sensorTimeout) {
+      _pendingTimeout = true; // Only count this timeout once
+      _missCount++;
+
+      if (_valid && _missCount >= MISS_THRESHOLD) {
+        // Fail CLOSED after sustained signal loss.
         _valid = false;
+        _wasInvalid = true;
+        _goodCount = 0;
+        _smoothedDistanceCm = -1;
         if (_logger) _logger->log("Sensor Timeout");
       }
     }

@@ -78,6 +78,17 @@ private:
   // Timeout handling
   const unsigned long _sensorTimeout = 100; // Timeout in milliseconds for sensor responses
   volatile unsigned long _lastEchoTime = 0;  // volatile: written in ISR, read in main loop
+
+  // --- Auto-recovery hysteresis ---
+  // Prevents a single missed echo from stopping the car.
+  // Requires N consecutive missed pings before invalidating,
+  // and N consecutive valid readings to recover.
+  static constexpr uint8_t MISS_THRESHOLD = 3;   // ~300ms of no echoes before invalid
+  static constexpr uint8_t RECOVER_THRESHOLD = 3; // ~180ms of valid signal to recover
+  uint8_t _missCount = 0;
+  uint8_t _goodCount = 0;
+  bool _pendingTimeout = false; // true once we've counted a timeout for this ping cycle
+  bool _wasInvalid = false;     // tracks whether we entered the invalid state
   
   // The ISR function that will be called by the hardware.
   void IRAM_ATTR handleInterrupt();

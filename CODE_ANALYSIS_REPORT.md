@@ -55,6 +55,11 @@ The project is a safety-focused controller for a child's ride-on car with:
 **Problem**: Control logic state transitions were undocumented.
 **Fix**: Added ASCII state diagram in `src/Shared/ControlLogic.h`.
 
+### 8. Sensor Auto-Recovery ✅ FIXED
+**Severity**: MEDIUM (UX)
+**Problem**: A single missed echo immediately invalidated the sensor, stopping the car permanently until pedal release.
+**Fix**: Added hysteresis — requires 3 consecutive missed pings (~300ms) before invalidating, and 3 consecutive valid echoes (~180ms) to recover. Brief glitches no longer stop the car.
+
 ## Remaining Recommendations
 
 ### Medium Priority
@@ -103,9 +108,9 @@ g++ -std=c++17 -Wall -Wextra -I src -o test/test_control_logic test/test_control
 - [x] Fix ISR race condition (volatile)
 - [x] Verify watchdog timer (built-in)
 - [x] Zero compiler warnings
+- [x] Add sensor auto-recovery (hysteresis: 3-miss invalidate, 3-good recover)
 
 ### Remaining (Medium/Low)
 - [ ] Create shared `PulseTimer` base for interrupt-driven sensors
 - [ ] Standardize error handling across modules
-- [ ] Add sensor auto-recovery mechanisms
 - [ ] Draw architecture diagram for phase-based control loop
