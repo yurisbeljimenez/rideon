@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include "esp_task_wdt.h"  // ESP-IDF task watchdog timer
 #include "pins.h"
 
 #include "./modules/Accelerator/Accelerator.h"
@@ -15,11 +14,10 @@
 
 // All pin assignments and hardware tuning constants come from pins.h
 // (single source of truth — do not re-declare them here).
-
-// Watchdog timer: resets the ESP32 if loop() stops running (system hang).
-// The loop must call esp_task_wdt_feed() at least once per timeout period.
-// 5 seconds (5000 ms) is generous for normal operation but catches infinite loops.
-#define WDT_TIMEOUT_MS 5000
+//
+// WATCHDOG: The ESP32 Arduino core already enables a 5-second task watchdog
+// for the loopTask and calls esp_task_wdt_feed() before every loop() iteration.
+// If loop() ever blocks for >5 seconds, the ESP32 auto-resets. No extra code needed.
 
 // Logger instances for each module
 Logger systemStatusLogger("System Status");
@@ -109,11 +107,7 @@ void pedalCalibrationDiagnostic() {
 
 void setup() {
   Serial.begin(115200);
-
-  // Initialize hardware watchdog timer to catch system hangs
-  esp_task_wdt_init(WDT_TIMEOUT_MS);
-  esp_task_wdt_add(NULL);  // NULL = current task (the Arduino loop task)
-  Serial.println("Watchdog timer initialized (" + String(WDT_TIMEOUT_MS) + " ms timeout)");
+  Serial.println("Ride-On Car Controller starting...");
 
   pinMode(ESTOP_PIN, INPUT_PULLUP);
 
@@ -174,9 +168,6 @@ void setup() {
 }
 
 void loop() {
-  // Feed watchdog to signal the system is alive
-  esp_task_wdt_feed();
-
   // PHASE 1: DATA GATHERING (all non-blocking)
   accelerator.update();
   remoteControl.update();
