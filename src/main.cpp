@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "esp_task_wdt.h"  // ESP-IDF task watchdog timer
 #include "pins.h"
 
 #include "./modules/Accelerator/Accelerator.h"
@@ -17,8 +18,8 @@
 
 // Watchdog timer: resets the ESP32 if loop() stops running (system hang).
 // The loop must call esp_task_wdt_feed() at least once per timeout period.
-// 5 seconds is generous for normal operation but catches infinite loops.
-#define WDT_TIMEOUT_SEC 5
+// 5 seconds (5000 ms) is generous for normal operation but catches infinite loops.
+#define WDT_TIMEOUT_MS 5000
 
 // Logger instances for each module
 Logger systemStatusLogger("System Status");
@@ -110,9 +111,9 @@ void setup() {
   Serial.begin(115200);
 
   // Initialize hardware watchdog timer to catch system hangs
-  esp_task_wdt_init(WDT_TIMEOUT_SEC);
+  esp_task_wdt_init(WDT_TIMEOUT_MS);
   esp_task_wdt_add(NULL);  // NULL = current task (the Arduino loop task)
-  Serial.println("Watchdog timer initialized (" + String(WDT_TIMEOUT_SEC) + "s timeout)");
+  Serial.println("Watchdog timer initialized (" + String(WDT_TIMEOUT_MS) + " ms timeout)");
 
   pinMode(ESTOP_PIN, INPUT_PULLUP);
 
