@@ -23,16 +23,28 @@ A complete, safety-focused software controller for a child's ride-on car built a
 - **Comprehensive Logging**: Per-module debugging output
 - **Hardware Abstraction**: Clean separation of hardware and software logic
 
-## Hardware Requirements
+## Design Philosophy
 
-- ESP32-S3 Development Board
-- Cytron MDDS30 Dual Motor Driver
-- Radiolink CL9030 Brushed ESC for steering
-- HC-SR04 Ultrasonic Sensors (2x)
-- Radiolink R6FG 6-Channel Receiver
-- Analog Accelerator Pedal
-- Momentary Pushbutton for gear shifting
-- NeoPixel RGB LED for status indication
+- **Modular, Class-Based Design**: Each hardware component is a self-contained class with clean encapsulation.
+- **Non-Blocking State Machine**: Main loop is a robust state machine managing car operational states.
+- **Centralized Definitions**: Core data structures in a shared directory to prevent duplication.
+- **Dependency Injection**: System-wide services (e.g., `Logger`) are injected into modules for testability.
+- **Fully Non-Blocking Execution**: Maximum responsiveness to hazards and inputs.
+
+## Hardware Components
+
+| Category | Component | Role |
+|----------|-----------|------|
+| **Microcontroller** | ESP32-S3 Dev Board (N16R8) | Central processing unit. Manages all I/O, control loop, and safety logic. |
+| **Power System** | DeWalt 20V Battery + 20V→12V Step-Down | Stable 12V source for drive system and main board. |
+| **Main Board** | Freenove Breakout Board for ESP32-S3 | Power distribution and signal routing. Provides 5V/3.3V rails. |
+| **Drive Control** | Cytron MDDS30 (30A) Dual Motor Driver | H-bridge driver for two rear drive motors (PWM + DIR). |
+| **Steering Control** | Radiolink CL9030 (90A) Brushed ESC | High-current servo replacing standard ESC for front steering. |
+| **Safety Sensing** | HC-SR04 Ultrasonic (×2) | Forward/reverse obstacle detection. Basis of collision avoidance. |
+| **Human Interface** | Radiolink R6FG 6-Channel Receiver | Parental RC override for throttle and steering. |
+| | Analog Accelerator Pedal (Potentiometer/Hall Effect) | Primary driver input, mapped to vehicle speed. |
+| | Momentary Pushbutton | Gear shifting (Forward/Neutral/Reverse). |
+| **Status** | NeoPixel RGB LED (WS2812) | Visual state indicator (safe, warning, danger, fault). |
 
 ## Project Structure
 
@@ -40,6 +52,7 @@ A complete, safety-focused software controller for a child's ride-on car built a
 .
 ├── src/
 │   ├── main.cpp                    # Main application entry point
+│   ├── pins.h                      # Pin definitions and tuning constants
 │   ├── modules/                    # All system modules
 │   │   ├── Accelerator/            # Accelerator pedal controller
 │   │   ├── DriveController/        # Motor drive control
@@ -50,13 +63,13 @@ A complete, safety-focused software controller for a child's ride-on car built a
 │   │   ├── SteeringController/     # Steering control system
 │   │   └── SystemStatus/           # LED status indicators
 │   └── Shared/                     # Shared data structures
-│       └── CarState.h              # Car state enumeration
-├── test/                          # Unit tests (if any)
-├── include/                       # Additional header files
-├── platformio.ini                 # Build configuration
-├── CONTRIBUTING.md                # Contribution guidelines
-├── CODE_OF_CONDUCT.md             # Code of conduct
-└── PROJECT_README.md              # Detailed project documentation
+│       ├── CarState.h              # Car state enumeration
+│       └── ControlLogic.h          # Pure-logic control state machine
+├── test/                           # Unit tests
+├── platformio.ini                  # Build configuration
+├── CONTRIBUTING.md                 # Contribution guidelines
+├── CODE_OF_CONDUCT.md              # Code of conduct
+└── CODE_ANALYSIS_REPORT.md         # Code quality analysis
 ```
 
 ## Getting Started
@@ -111,4 +124,7 @@ For detailed documentation of each module, please see:
 
 - [SystemStatus Module](src/modules/SystemStatus/README.md)
 - [Logger Module](src/modules/Logger/README.md)
-- [Complete Project Documentation](PROJECT_README.md)
+- [ProximitySensor Module](src/modules/ProximitySensor/README.md)
+- [SteeringController Module](src/modules/SteeringController/README.md)
+- [Hardware Integration Guide](HARDWARE_INTEGRATION_GUIDE.md)
+- [Code Analysis Report](CODE_ANALYSIS_REPORT.md)
