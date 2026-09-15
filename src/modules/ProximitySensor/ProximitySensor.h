@@ -77,7 +77,7 @@ private:
   
   // Timeout handling
   const unsigned long _sensorTimeout = 100; // Timeout in milliseconds for sensor responses
-  unsigned long _lastEchoTime = 0;
+  volatile unsigned long _lastEchoTime = 0;  // volatile: written in ISR, read in main loop
   
   // The ISR function that will be called by the hardware.
   void IRAM_ATTR handleInterrupt();
